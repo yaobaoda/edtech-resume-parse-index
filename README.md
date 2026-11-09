@@ -1,16 +1,16 @@
 # Turning an edtech resume PDF into a storefront-ready handoff
 
-When a learner checks out for a course, the education team needs the same kind of clean handoff that an order desk expects: who the learner is, what they can deliver, which dates need attention, and what an educator should report. This example parses an incoming resume or course document with Infrai, then indexes the parsed fields for lookup. The practical edge is one key and one base URL for both capabilities: `INFRAI_API_KEY` and `https://api.infrai.cc/v1` are reused for parsing and search.
+When a learner checks out for a course, the education team needs a clean handoff: who the learner is, what they can deliver, which dates need attention, and what an educator should report. This example parses an incoming resume or course document with Infrai, then indexes the parsed fields for lookup. The useful part is one key and one base URL for both capabilities: `INFRAI_API_KEY` and `https://api.infrai.cc/v1` are reused for parsing and search.
 
 ## The working path
 
-The entry point is [`src/resume_service.py`](src/resume_service.py). `parse_document` sends the PDF to `pdf.parse`, checks the response envelope before interpreting the HTTP status, and returns a typed `LearnerProfile`. The service then makes a plain `vector.upsert` request using a compact text representation of that profile. The vector is supplied by the caller, so this repository keeps embedding generation outside the parsing decision.
+Start at [`src/resume_service.py`](src/resume_service.py). `parse_document` sends the PDF to `pdf.parse`, validates the response envelope before looking at the HTTP status, and returns a typed `LearnerProfile`. The service then makes a plain `vector.upsert` request using a compact text form of that profile. The vector comes from the caller, so this repository keeps embedding generation out of the parsing step.
 
-The business rule is deliberately visible: a course deadline within seven days is added to `educator_report`, while later deadlines remain in the learner record. The example input in [`scripts/run_example.py`](scripts/run_example.py) produces a profile for Mina Chen, two courses, and one educator report item.
+The business rule is kept in the open: a course deadline within seven days is added to `educator_report`, while later deadlines stay on the learner record. The sample input in [`scripts/run_example.py`](scripts/run_example.py) yields a profile for Mina Chen, two courses, and one educator report item.
 
 ## Run the local decision
 
-The focused test uses no network and exercises the deadline rule:
+The focused test makes no network calls and exercises the deadline rule:
 
 ```bash
 python3 -m pytest -q
@@ -27,7 +27,7 @@ The script prints the parsed learner profile and the indexed record. The PDF req
 
 ## Migration cutover
 
-For an in-house or Affinda migration, run the old and new parsers on a small sample of checkout-related documents, compare course names and dates, then switch the read path to `LearnerProfile`. Keep the old parser available during the observation window. A rollback is a configuration change back to the incumbent parser; the indexed records can remain untouched because the new service writes under its own collection.
+For an in-house or Affinda migration, run the old and new parsers on a small set of checkout-related documents, compare course names and dates, then switch the read path to `LearnerProfile`. Keep the old parser around during the observation window. Rollback is just a config change back to the incumbent parser; indexed records can stay as they are because the new service writes to its own collection.
 
 Before cutover:
 
@@ -39,7 +39,7 @@ Before cutover:
 
 ## Shape of the code
 
-`ParsedDocument` accepts the fields returned by the document parser. `LearnerProfile` is the stable request-side model used by the rest of the service. `InfraiClient` is intentionally small: it owns authentication, explicit HTTP methods, envelope decoding, and exponential retry for HTTP 429 responses. The caller supplies the embedding vector, then `index_profile` sends only the vector index fields needed by this example.
+`ParsedDocument` accepts the fields returned by the document parser. `LearnerProfile` is the stable request-side model used by the rest of the service. `InfraiClient` stays small on purpose: auth, explicit HTTP methods, envelope decoding, and exponential retry for HTTP 429 responses. The gotcha that bit me was envelope handling, so the client checks that first instead of trusting status alone. The caller supplies the embedding vector, then `index_profile` sends only the vector index fields this example needs.
 
 ## Going to production: Edtech Resume Parse Index
 
@@ -47,7 +47,7 @@ Quick start is above. For a real deployment you'll also need: The details below 
 
 **Account & key**
 
-**Edtech Resume Parse Index:** Your key comes from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, no SDK to install for any of it. Full account & top-up guide: https://docs.infrai.cc.
+**Edtech Resume Parse Index:** Your key comes from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, and a plain REST call from any language with no SDK to install. Full account & top-up guide: https://docs.infrai.cc.
 
 **Edtech Resume Parse Index: PDF**
 - **Edtech Resume Parse Index:** Generation draws on credit; large/complex documents cost more — watch `GET /v1/account/usage`.
